@@ -5,11 +5,11 @@ import (
 	"time"
 )
 
-// GetWeekDayStr returns the date of the specified day of the week for the given timestamp
+// GetWeekDayStartTime returns the timestamp of the specified day of the week for the given timestamp
 // day: 1 for Monday, 2 for Tuesday, ..., 7 for Sunday
-func GetWeekDayStr(timestamp int64, day int) (string, error) {
+func GetWeekDayStartTime(timestamp int64, day int) (time.Time, error) {
 	if day < 1 || day > 7 {
-		return "", fmt.Errorf("day must be between 1 and 7")
+		return time.Now(), fmt.Errorf("day must be between 1 and 7")
 	}
 
 	// 将时间戳转换为 time.Time 对象
@@ -25,6 +25,5 @@ func GetWeekDayStr(timestamp int64, day int) (string, error) {
 		weekStart = t.AddDate(0, 0, -int(weekday))
 	}
 
-	// 格式化为 %Y%m%d 的字符串
-	return weekStart.AddDate(0, 0, day).Format("20060102"), nil
+	return weekStart.AddDate(0, 0, day), nil
 }
