@@ -25,5 +25,7 @@ func GetWeekDayStartTime(timestamp int64, day int) (time.Time, error) {
 		weekStart = t.AddDate(0, 0, -int(weekday))
 	}
 
-	return weekStart.AddDate(0, 0, day), nil
+	l := weekStart.AddDate(0, 0, day).Format("20060102")
+	newT, _ := time.Parse("20060102", l)
+	return newT, nil
 }
