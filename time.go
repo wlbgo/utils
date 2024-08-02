@@ -14,18 +14,17 @@ func GetWeekDayStartTime(timestamp int64, day int) (time.Time, error) {
 
 	// 将时间戳转换为 time.Time 对象
 	t := time.Unix(timestamp, 0)
+	t = time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 
 	// 获取当前日期的星期几（0 表示周日，1 表示周一，...，6 表示周六）
 	weekday := t.Weekday()
 
-	var weekStart time.Time
+	// 找到上周日
+	var lastSun time.Time
 	if weekday == 0 {
-		weekStart = t.AddDate(0, 0, -7)
+		lastSun = t.AddDate(0, 0, -7)
 	} else {
-		weekStart = t.AddDate(0, 0, -int(weekday))
+		lastSun = t.AddDate(0, 0, -int(weekday))
 	}
-
-	l := weekStart.AddDate(0, 0, day).Format("20060102")
-	newT, _ := time.Parse("20060102", l)
-	return newT, nil
+	return lastSun.AddDate(0, 0, day), nil
 }

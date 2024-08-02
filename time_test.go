@@ -32,6 +32,8 @@ func TestGetWeekDayStr(t *testing.T) {
 		{"TestFri2", args{1617225600 + 3*86400, 5}, "20210402", false},
 		{"TestSat2", args{1617225600 + 3*86400, 6}, "20210403", false},
 		{"TestSun2", args{1617225600 + 3*86400, 7}, "20210404", false},
+		{"TestMon1", args{1722502012, 1}, "20240729", false},
+		{"TestMon2", args{1722583522, 1}, "20240729", false},
 		{"TestInvalidDay", args{1617225600, 8}, "", true},
 	}
 	for _, tt := range tests {
@@ -41,9 +43,11 @@ func TestGetWeekDayStr(t *testing.T) {
 				t.Errorf("GetWeekDayStr() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			x, _ := time.Parse("20060102", tt.want)
-			if got.Unix() != x.Unix() {
-				t.Errorf("GetWeekDayStr() got = %v, want %v", got, tt.want)
+			if err == nil {
+				x, _ := time.ParseInLocation("20060102", tt.want, time.Local)
+				if got.Unix() != x.Unix() {
+					t.Errorf("GetWeekDayStr() got = %v, want %v", got, tt.want)
+				}
 			}
 		})
 	}
