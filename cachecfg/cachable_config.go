@@ -9,25 +9,28 @@ import (
 
 var errUseOutdatedValue = errors.New("use outdated value")
 
+// ValueFetcher defines the interface for fetching values
 type ValueFetcher[T any] interface {
 	Key(args ...any) string
 	FetchValue(args ...any) (T, error) // 考虑到有默认值的使用
 }
 
+// singleCache represents a single cached value
 type singleCache[T any] struct {
 	Value      T
 	ExpireTime time.Time
 }
 
+// CachableConfig represents a cacheable configuration
 type CachableConfig[T any] struct {
-	ValueFetcher[T]
-	TTL   time.Duration
-	Cache map[string]*singleCache[T]
-	Mutex sync.RWMutex
-	// 是否强制更新
-	ForceUpdate bool
+	ValueFetcher[T] // ValueFetcher interface
+	TTL            time.Duration
+	Cache          map[string]*singleCache[T]
+	Mutex          sync.RWMutex
+	ForceUpdate    bool
 }
 
+// GetValue retrieves the value from the cache or fetches it if not present
 func (c *CachableConfig[T]) GetValue(args ...any) (T, error) {
 	c.Mutex.RLock()
 	key := c.ValueFetcher.Key(args...)
