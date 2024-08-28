@@ -10,8 +10,8 @@ type RedisKeyValueFetcher struct {
 }
 
 func (r *RedisKeyValueFetcher) FetchValue(args ...any) ([]byte, error) {
-	key := r.Key(args)
-	ctx := context.Background()
+	ctx := args[0].(context.Context)
+	key := r.Key(args...)
 	s, err := r.Rds.Get(ctx, key).Bytes()
 	if err != nil {
 		return nil, err
@@ -20,7 +20,8 @@ func (r *RedisKeyValueFetcher) FetchValue(args ...any) ([]byte, error) {
 }
 
 func (r *RedisKeyValueFetcher) Key(args ...any) string {
-	return args[0].(string)
+	// args[0] is context.Context
+	return args[1].(string)
 }
 
 func (r *RedisKeyValueFetcher) DefaultValue(_ ...any) (string, error) {

@@ -9,6 +9,8 @@ import (
 var errUseOutdatedValue = errors.New("use outdated value")
 var errDefaultUnimplemented = errors.New("default value unimplemented")
 
+// TODO remove long time cache
+
 // ValueFetcher defines the interface for fetching values
 type ValueFetcher[T any] interface {
 	// Key generates a key for the cache
@@ -34,6 +36,15 @@ type CachableConfig[T any] struct {
 	Cache           map[string]*singleCache[T]
 	Mutex           sync.RWMutex
 	ForceUpdate     bool
+}
+
+func NewCacheCfg[T any](ttl time.Duration, forceUpdate bool) *CachableConfig[T] {
+	return &CachableConfig[T]{
+		TTL:         ttl,
+		Cache:       make(map[string]*singleCache[T]),
+		Mutex:       sync.RWMutex{},
+		ForceUpdate: forceUpdate,
+	}
 }
 
 // GetValue retrieves the value from the cache or fetches it if not present
