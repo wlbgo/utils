@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"reflect"
 	"testing"
 	"time"
 )
@@ -51,4 +52,36 @@ func TestGetWeekDayStr(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNearlyPeriodStartTime(t *testing.T) {
+	type args struct {
+		start  time.Time
+		period time.Duration
+		ts     time.Time
+	}
+	t1, _ := time.ParseInLocation("2006-01-02 15:04:05", "2021-08-13 00:00:00", time.Local)
+	t2, _ := time.ParseInLocation("2006-01-02 15:04:05", "2021-08-13 01:00:00", time.Local)
+	t3, _ := time.ParseInLocation("2006-01-02 15:04:05", "2021-08-13 00:00:00", time.Local)
+	tests := []struct {
+		name string
+		args args
+		want time.Time
+	}{
+		{name: "Test1", args: args{
+			start:  t1,
+			period: time.Hour * 24,
+			ts:     t2,
+		},
+			want: t3,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NearlyPeriodStartTime(tt.args.start, tt.args.period, tt.args.ts); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("nearlyPeriodStartTime() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+
 }

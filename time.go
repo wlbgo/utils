@@ -28,3 +28,10 @@ func GetWeekDayStartTime(timestamp int64, day int) (time.Time, error) {
 	}
 	return lastSun.AddDate(0, 0, day), nil
 }
+
+// NearlyPeriodStartTime returns the start time of the period that contains the given timestamp
+func NearlyPeriodStartTime(start time.Time, period time.Duration, ts time.Time) time.Time {
+	delta := ts.Sub(start)
+	periodCnt := delta / period
+	return start.Add(periodCnt * period)
+}

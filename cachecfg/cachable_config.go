@@ -1,18 +1,24 @@
-package rank
+package cachecfg
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
 
 var errUseOutdatedValue = errors.New("use outdated value")
+var errDefaultUnimplemented = errors.New("default value unimplemented")
 
 // ValueFetcher defines the interface for fetching values
 type ValueFetcher[T any] interface {
+	// Key generates a key for the cache
 	Key(args ...any) string
+
+	// FetchValue fetches the value from the source, maybe multiple fetch inside
 	FetchValue(args ...any) (T, error) // 考虑到有默认值的使用
+
+	// DefaultValue fetches the value default, if FetchValue failed
+	DefaultValue(args ...any) (T, error) // 考虑到有默认值的使用
 }
 
 // singleCache represents a single cached value
@@ -24,10 +30,10 @@ type singleCache[T any] struct {
 // CachableConfig represents a cacheable configuration
 type CachableConfig[T any] struct {
 	ValueFetcher[T] // ValueFetcher interface
-	TTL            time.Duration
-	Cache          map[string]*singleCache[T]
-	Mutex          sync.RWMutex
-	ForceUpdate    bool
+	TTL             time.Duration
+	Cache           map[string]*singleCache[T]
+	Mutex           sync.RWMutex
+	ForceUpdate     bool
 }
 
 // GetValue retrieves the value from the cache or fetches it if not present
@@ -41,7 +47,9 @@ func (c *CachableConfig[T]) GetValue(args ...any) (T, error) {
 	c.Mutex.RUnlock()
 
 	value, err := c.FetchValue(args...)
-	defer fmt.Printf("GetValue() key: %s, value: %v, err: %v\n", key, value, err)
+	if err != nil {
+		value, err = c.DefaultValue(args...)
+	}
 	if err != nil {
 		if c.ForceUpdate {
 			c.Mutex.Lock()
