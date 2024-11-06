@@ -24,6 +24,6 @@ func (r *RedisKeyValueFetcher) Key(args ...any) string {
 	return args[1].(string)
 }
 
-func (r *RedisKeyValueFetcher) DefaultValue(_ ...any) (string, error) {
+func (r *RedisKeyValueFetcher) DefaultValue(_ ...any) ([]byte, error) {
 	panic("implement me")
 }
