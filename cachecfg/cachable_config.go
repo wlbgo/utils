@@ -77,3 +77,7 @@ func (c *CachableConfig[T]) GetValue(args ...any) (T, bool, error) {
 	}
 	return value, false, nil
 }
+
+func (c *CachableConfig[T]) CacheSize() int {
+	return len(c.Cache)
+}
