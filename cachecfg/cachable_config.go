@@ -1,7 +1,6 @@
 package cachecfg
 
 import (
-	"context"
 	"errors"
 	"sync"
 	"time"
@@ -15,12 +14,10 @@ var errDefaultUnimplemented = errors.New("default value unimplemented")
 // ValueFetcher defines the interface for fetching values
 type ValueFetcher[T any] interface {
 	// Key generates a key for the cache
-	Key(ctx context.Context, args ...any) string
+	Key(args ...any) string
 
 	// FetchValue fetches the value from the source, maybe multiple fetch inside
-	FetchValue(ctx context.Context, args ...any) (T, error) // 考虑到有默认值的使用
-	// DefaultValue fetches the value default, if FetchValue failed
-	DefaultValue(ctx context.Context, fetcherErr error, args ...any) (T, error) // 考虑到有默认值的使用
+	FetchValue(args ...any) (T, error) // 需要自行实现默认值逻辑
 }
 
 // singleCache represents a single cached value
@@ -48,19 +45,16 @@ func NewCacheCfg[T any](ttl time.Duration, forceUpdate bool) *CachableConfig[T] 
 }
 
 // GetValue retrieves the value from the cache or fetches it if not present
-func (c *CachableConfig[T]) GetValue(ctx context.Context, args ...any) (T, error) {
+func (c *CachableConfig[T]) GetValue(args ...any) (T, error) {
 	c.Mutex.RLock()
-	key := c.ValueFetcher.Key(ctx, args...)
+	key := c.ValueFetcher.Key(args...)
 	if v, ok := c.Cache[key]; ok && v.ExpireTime.After(time.Now()) {
 		c.Mutex.RUnlock()
 		return v.Value, nil
 	}
 	c.Mutex.RUnlock()
 
-	value, err := c.FetchValue(ctx, args...)
-	if err != nil {
-		value, err = c.DefaultValue(ctx, err, args...)
-	}
+	value, err := c.FetchValue(args...)
 	if err != nil {
 		if c.ForceUpdate {
 			c.Mutex.Lock()
