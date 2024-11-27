@@ -7,7 +7,6 @@ import (
 )
 
 var _ ValueFetcher[[]byte] = &RedisKeyValueFetcher{}
-var _ DefaultValueFetcher[[]byte] = &RedisKeyValueFetcher{}
 
 type RedisKeyValueFetcher struct {
 	Rds *redis.Client
@@ -26,6 +25,6 @@ func (r *RedisKeyValueFetcher) Key(ctx context.Context, args ...any) string {
 	return args[0].(string)
 }
 
-func (r *RedisKeyValueFetcher) DefaultValue(ctx context.Context, _ ...any) ([]byte, error) {
-	panic("implement me")
+func (r *RedisKeyValueFetcher) DefaultValue(_ context.Context, fetchErr error, _ ...any) ([]byte, error) {
+	return nil, fetchErr
 }

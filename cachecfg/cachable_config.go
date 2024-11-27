@@ -19,11 +19,8 @@ type ValueFetcher[T any] interface {
 
 	// FetchValue fetches the value from the source, maybe multiple fetch inside
 	FetchValue(ctx context.Context, args ...any) (T, error) // 考虑到有默认值的使用
-}
-
-type DefaultValueFetcher[T any] interface {
 	// DefaultValue fetches the value default, if FetchValue failed
-	DefaultValue(ctx context.Context, args ...any) (T, error) // 考虑到有默认值的使用
+	DefaultValue(ctx context.Context, fetcherErr error, args ...any) (T, error) // 考虑到有默认值的使用
 }
 
 // singleCache represents a single cached value
@@ -34,16 +31,15 @@ type singleCache[T any] struct {
 
 // CachableConfig represents a cacheable configuration
 type CachableConfig[T any] struct {
-	fetcher     ValueFetcher[T] // ValueFetcher interface
-	TTL         time.Duration
-	Cache       map[string]*singleCache[T]
-	Mutex       sync.RWMutex
-	ForceUpdate bool
+	ValueFetcher[T] // ValueFetcher interface
+	TTL             time.Duration
+	Cache           map[string]*singleCache[T]
+	Mutex           sync.RWMutex
+	ForceUpdate     bool
 }
 
-func NewCacheCfg[T any](ttl time.Duration, forceUpdate bool, fetcher ValueFetcher[T]) *CachableConfig[T] {
+func NewCacheCfg[T any](ttl time.Duration, forceUpdate bool) *CachableConfig[T] {
 	return &CachableConfig[T]{
-		fetcher:     fetcher,
 		TTL:         ttl,
 		Cache:       make(map[string]*singleCache[T]),
 		Mutex:       sync.RWMutex{},
@@ -54,18 +50,16 @@ func NewCacheCfg[T any](ttl time.Duration, forceUpdate bool, fetcher ValueFetche
 // GetValue retrieves the value from the cache or fetches it if not present
 func (c *CachableConfig[T]) GetValue(ctx context.Context, args ...any) (T, error) {
 	c.Mutex.RLock()
-	key := c.fetcher.Key(ctx, args...)
+	key := c.ValueFetcher.Key(ctx, args...)
 	if v, ok := c.Cache[key]; ok && v.ExpireTime.After(time.Now()) {
 		c.Mutex.RUnlock()
 		return v.Value, nil
 	}
 	c.Mutex.RUnlock()
 
-	value, err := c.fetcher.FetchValue(ctx, args...)
+	value, err := c.FetchValue(ctx, args...)
 	if err != nil {
-		if f, ok := c.fetcher.(DefaultValueFetcher[T]); ok {
-			value, err = f.DefaultValue(ctx, args...)
-		}
+		value, err = c.DefaultValue(ctx, err, args...)
 	}
 	if err != nil {
 		if c.ForceUpdate {
