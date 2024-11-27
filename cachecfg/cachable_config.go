@@ -9,7 +9,18 @@ import (
 var errUseOutdatedValue = errors.New("use outdated value")
 var errDefaultUnimplemented = errors.New("default value unimplemented")
 
-// TODO remove long time cache
+// DefaultValueError is a custom error type to indicate that DefaultValue should be used
+type DefaultValueError struct {
+	Err error
+}
+
+func (e *DefaultValueError) Error() string {
+	return e.Err.Error()
+}
+
+func (e *DefaultValueError) Unwrap() error {
+	return e.Err
+}
 
 // ValueFetcher defines the interface for fetching values
 type ValueFetcher[T any] interface {
@@ -17,7 +28,13 @@ type ValueFetcher[T any] interface {
 	Key(args ...any) string
 
 	// FetchValue fetches the value from the source, maybe multiple fetch inside
-	FetchValue(args ...any) (T, error) // 需要自行实现默认值逻辑
+	FetchValue(args ...any) (T, error)
+}
+
+// DefaultValueFetcher defines the interface for fetching default values
+type DefaultValueFetcher[T any] interface {
+	// DefaultValue fetches the value default, if FetchValue failed
+	DefaultValue(args ...any) (T, error)
 }
 
 // singleCache represents a single cached value
@@ -55,6 +72,16 @@ func (c *CachableConfig[T]) GetValue(args ...any) (T, error) {
 	c.Mutex.RUnlock()
 
 	value, err := c.FetchValue(args...)
+	if err != nil {
+		var defaultValueErr *DefaultValueError
+		if errors.As(err, &defaultValueErr) {
+			if defaultValueFetcher, ok := c.ValueFetcher.(DefaultValueFetcher[T]); ok {
+				value, err = defaultValueFetcher.DefaultValue(args...)
+			} else {
+				err = errDefaultUnimplemented
+			}
+		}
+	}
 	if err != nil {
 		if c.ForceUpdate {
 			c.Mutex.Lock()
