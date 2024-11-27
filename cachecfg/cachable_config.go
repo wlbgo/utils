@@ -17,10 +17,7 @@ type ValueFetcher[T any] interface {
 	Key(args ...any) string
 
 	// FetchValue fetches the value from the source, maybe multiple fetch inside
-	FetchValue(args ...any) (T, error) // 考虑到有默认值的使用
-
-	// DefaultValue fetches the value default, if FetchValue failed
-	DefaultValue(args ...any) (T, error) // 考虑到有默认值的使用
+	FetchValue(args ...any) (T, error) // 需要自行实现默认值逻辑
 }
 
 // singleCache represents a single cached value
@@ -58,9 +55,6 @@ func (c *CachableConfig[T]) GetValue(args ...any) (T, error) {
 	c.Mutex.RUnlock()
 
 	value, err := c.FetchValue(args...)
-	if err != nil {
-		value, err = c.DefaultValue(args...)
-	}
 	if err != nil {
 		if c.ForceUpdate {
 			c.Mutex.Lock()

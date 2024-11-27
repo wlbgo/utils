@@ -2,8 +2,11 @@ package cachecfg
 
 import (
 	"context"
+
 	"github.com/go-redis/redis/v8"
 )
+
+var _ ValueFetcher[[]byte] = &RedisKeyValueFetcher{}
 
 type RedisKeyValueFetcher struct {
 	Rds *redis.Client
@@ -22,8 +25,4 @@ func (r *RedisKeyValueFetcher) FetchValue(args ...any) ([]byte, error) {
 func (r *RedisKeyValueFetcher) Key(args ...any) string {
 	// args[0] is context.Context
 	return args[1].(string)
-}
-
-func (r *RedisKeyValueFetcher) DefaultValue(_ ...any) ([]byte, error) {
-	panic("implement me")
 }
