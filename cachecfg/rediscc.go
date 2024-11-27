@@ -23,5 +23,6 @@ func (r *RedisKeyValueFetcher) FetchValue(args ...any) ([]byte, error) {
 }
 
 func (r *RedisKeyValueFetcher) Key(args ...any) string {
+	// args[0] is context.Context
 	return args[1].(string)
 }
