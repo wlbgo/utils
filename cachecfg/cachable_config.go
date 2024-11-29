@@ -50,8 +50,13 @@ type CachableConfig[T any] struct {
 	Cache           map[string]*singleCache[T]
 	Mutex           sync.RWMutex
 	ForceUpdate     bool
+
+	// use for clean cache
+	stopChan      chan struct{}
+	cleanInterval time.Duration
 }
 
+// NewCacheCfg creates a new CachableConfig
 func NewCacheCfg[T any](ttl time.Duration, forceUpdate bool) *CachableConfig[T] {
 	return &CachableConfig[T]{
 		TTL:         ttl,
@@ -59,6 +64,18 @@ func NewCacheCfg[T any](ttl time.Duration, forceUpdate bool) *CachableConfig[T] 
 		Mutex:       sync.RWMutex{},
 		ForceUpdate: forceUpdate,
 	}
+}
+
+// NewCacheCfgWithAutoClean creates a new CachableConfig with automatic cache cleaning
+func NewCacheCfgWithAutoClean[T any](ttl time.Duration, forceUpdate bool, cleanInterval time.Duration) *CachableConfig[T] {
+	c := NewCacheCfg[T](ttl, forceUpdate)
+	if cleanInterval <= 0 {
+		panic("cleanInterval must be greater than 0")
+	}
+	c.cleanInterval = cleanInterval
+	c.stopChan = make(chan struct{})
+	go c.startCleaner()
+	return c
 }
 
 // GetValue retrieves the value from the cache or fetches it if not present
@@ -103,4 +120,39 @@ func (c *CachableConfig[T]) GetValue(args ...any) (T, error) {
 		ExpireTime: time.Now().Add(c.TTL),
 	}
 	return value, nil
+}
+
+// startCleaner starts a goroutine that periodically cleans up expired cache entries
+func (c *CachableConfig[T]) startCleaner() {
+	ticker := time.NewTicker(c.cleanInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			c.cleanExpiredCache()
+		case <-c.stopChan:
+			return
+		}
+	}
+}
+
+// cleanExpiredCache removes expired cache entries
+func (c *CachableConfig[T]) cleanExpiredCache() {
+	c.Mutex.Lock()
+	defer c.Mutex.Unlock()
+
+	now := time.Now()
+	for key, cache := range c.Cache {
+		if cache.ExpireTime.Before(now) {
+			delete(c.Cache, key)
+		}
+	}
+}
+
+// StopCleaner stops the cache cleaner goroutine
+func (c *CachableConfig[T]) StopCleaner() {
+	if c.stopChan != nil {
+		close(c.stopChan)
+	}
 }
