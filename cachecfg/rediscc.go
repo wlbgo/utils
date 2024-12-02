@@ -7,6 +7,7 @@ import (
 )
 
 var _ ValueFetcher[[]byte] = &RedisKeyValueFetcher{}
+var badParams = errors.New("bad params")
 
 type RedisKeyValueFetcher struct {
 	Rds *redis.Client
@@ -16,7 +17,11 @@ type RedisKeyValueFetcher struct {
 }
 
 func (r *RedisKeyValueFetcher) FetchValue(args ...any) ([]byte, error) {
-	ctx := args[0].(context.Context)
+	ctx, ok1 := args[0].(context.Context)
+	_, ok2 := args[1].(string)
+	if !ok1 || !ok2 {
+		return nil, badParams
+	}
 	key := r.Key(args...)
 	s, err := r.Rds.Get(ctx, key).Bytes()
 	/* If taking redis.Nil as a common blank value, you can return nil as error.
