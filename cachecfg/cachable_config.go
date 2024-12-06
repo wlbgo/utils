@@ -9,18 +9,8 @@ import (
 var errUseOutdatedValue = errors.New("use outdated value")
 var errDefaultUnimplemented = errors.New("default value unimplemented")
 
-// DefaultValueError is a custom error type to indicate that DefaultValue should be used
-type DefaultValueError struct {
-	Err error
-}
-
-func (e *DefaultValueError) Error() string {
-	return e.Err.Error()
-}
-
-func (e *DefaultValueError) Unwrap() error {
-	return e.Err
-}
+// UseDefaultValue is a custom error to indicate that DefaultValue should be used
+var UseDefaultValue = errors.New("use default value")
 
 // ValueFetcher defines the interface for fetching values
 type ValueFetcher[T any] interface {
@@ -89,14 +79,11 @@ func (c *CachableConfig[T]) GetValue(args ...any) (T, error) {
 	c.Mutex.RUnlock()
 
 	value, err := c.FetchValue(args...)
-	if err != nil {
-		var defaultValueErr *DefaultValueError
-		if errors.As(err, &defaultValueErr) {
-			if defaultValueFetcher, ok := c.ValueFetcher.(DefaultValueFetcher[T]); ok {
-				value, err = defaultValueFetcher.DefaultValue(args...)
-			} else {
-				err = errDefaultUnimplemented
-			}
+	if err != nil && errors.Is(err, UseDefaultValue) {
+		if defaultValueFetcher, ok := c.ValueFetcher.(DefaultValueFetcher[T]); ok {
+			value, err = defaultValueFetcher.DefaultValue(args...)
+		} else {
+			err = errDefaultUnimplemented
 		}
 	}
 	if err != nil {
