@@ -9,8 +9,6 @@
 
 ![fetch_in_wecom.png](images%2Ffetch_in_wecom.png)
 
-![stat_detail.png](images%2Fstat_detail.png)
-
 ## 使用方法
 
 使用 `go get` 命令安装 `diststat`：
