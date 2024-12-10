@@ -1,14 +1,15 @@
 `diststat` 基于 Redis 分布式统计，用于在分布式环境中高效地统计计数器数据。
 
+相比于基于Prometheus指标统计，有不依赖于指标平台、数据量小、实时性强、可灵活获取数据的优势。
+
 它提供了一个简单的接口来增加计数器，并定期将计数器数据刷新到 Redis 中。
 
-使用并修改Python脚本，可以针对不同维度统计出CSV表格数据。再结合企业微信机器人等社交软件，可以方便灵活的提供给分析人员。
+使用并修改Python脚本，可以针对不同维度统计出CSV表格数据。再结合 [企业微信机器人](https://github.com/easy-wx/wecom-bot-svr?tab=readme-ov-file#5-%E5%8F%91%E9%80%81%E6%96%87%E4%BB%B6)
+等社交软件，可以方便灵活的提供给分析人员。
 
 ![fetch_in_wecom.png](images%2Ffetch_in_wecom.png)
 
 ![stat_detail.png](images%2Fstat_detail.png)
-
-相比于基于Prometheus指标统计，有不依赖于指标平台、数据量小、实时性强、可灵活获取数据的优势。
 
 ## 使用方法
 
