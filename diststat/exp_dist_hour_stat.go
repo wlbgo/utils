@@ -130,7 +130,7 @@ func (s *StatHelper) flushCounter() {
 	if err != nil {
 		err := s.Rds.HSet(ctx, relKey, kvList).Err()
 		if err != nil {
-			// TODO
+			// 为了可靠，重复设置一次
 		}
 	}
 

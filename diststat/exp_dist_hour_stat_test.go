@@ -105,20 +105,23 @@ func TestStatHelper_flushCounter(t *testing.T) {
 		StatKeyPrefix: "test",
 		Period:        time.Hour,
 		PeriodStart:   time.Now().Add(-time.Hour).Truncate(time.Hour),
-		StateKeyTTL:   time.Hour,
+		StateKeyTTL:   time.Hour * 72, // 保存72小时过期
 		FlushPeriod:   time.Second,
 	}
+
+	// exp_tag, reason, round, item_id
+	subLabelPrefix := "exp_tag:reason:0:item_id"
 
 	fetchLabelVal := func() (string, error) {
 		ctx := context.Background()
 		relKey := sh.StatKeyPrefix + ":" + sh.currStartPeriodStart.Format("20060102150405")
-		return rds.HGet(ctx, relKey, "test_label:"+sh.workerUUID).Result()
+		return rds.HGet(ctx, relKey, subLabelPrefix+":"+sh.workerUUID).Result()
 	}
 
 	err := sh.Init()
 	assert.NoError(t, err)
 
-	sh.CounterIncr("test_label")
+	sh.CounterIncr(subLabelPrefix)
 	time.Sleep(100 * time.Millisecond) // 等待 worker 处理
 
 	sh.flushCounter()
@@ -127,7 +130,7 @@ func TestStatHelper_flushCounter(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "1", val)
 
-	sh.CounterIncr("test_label")
+	sh.CounterIncr(subLabelPrefix)
 	time.Sleep(1100 * time.Millisecond) // 等待 worker 处理
 
 	val, err = fetchLabelVal()
