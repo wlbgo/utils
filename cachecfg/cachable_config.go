@@ -93,11 +93,13 @@ func (c *CachableConfig[T]) GetValue(args ...any) (T, error) {
 			c.Mutex.Unlock()
 			return value, err
 		}
+		c.Mutex.RLock()
 		if v, ok := c.Cache[key]; ok {
+			c.Mutex.RUnlock()
 			return v.Value, errUseOutdatedValue
-		} else {
-			return value, err
 		}
+		c.Mutex.RUnlock()
+		return value, err
 	}
 
 	c.Mutex.Lock()
