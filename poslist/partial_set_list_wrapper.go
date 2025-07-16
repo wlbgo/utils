@@ -7,10 +7,18 @@ type PartialSetList[T any] struct {
 	emptySlots  []int
 	isEmpty     func(T) bool
 	createEmpty func() T
+	limit       int
 }
 
 // NewPartialSetList - 初始长度为0，支持动态扩展
 func NewPartialSetList[T any](isEmpty func(T) bool, createEmpty func() T) (*PartialSetList[T], error) {
+	return NewPartialSetListWithLimit(isEmpty, createEmpty, 0)
+}
+
+func NewPartialSetListWithLimit[T any](isEmpty func(T) bool, createEmpty func() T, limit int) (*PartialSetList[T], error) {
+	if limit < 0 {
+		return nil, errors.New("limit must be greater than 0")
+	}
 	if isEmpty == nil {
 		return nil, errors.New("isEmpty is nil")
 	}
@@ -22,6 +30,7 @@ func NewPartialSetList[T any](isEmpty func(T) bool, createEmpty func() T) (*Part
 		return nil, errors.New("createEmpty() is not empty")
 	}
 	return &PartialSetList[T]{
+		limit:       limit,
 		items:       make([]T, 0),
 		emptySlots:  make([]int, 0),
 		isEmpty:     isEmpty,
@@ -31,6 +40,9 @@ func NewPartialSetList[T any](isEmpty func(T) bool, createEmpty func() T) (*Part
 
 // InsertAt 在指定位置插入元素，如果位置超出当前长度则扩展数组
 func (rc *PartialSetList[T]) InsertAt(index int, item T) bool {
+	if rc.limit > 0 && len(rc.items) >= rc.limit {
+		return false
+	}
 	if rc.isEmpty(item) {
 		return false
 	}
@@ -59,6 +71,9 @@ func (rc *PartialSetList[T]) InsertAt(index int, item T) bool {
 
 // InsertFirstEmpty 在第一个空位置插入元素，如果没有空位则扩展
 func (rc *PartialSetList[T]) InsertFirstEmpty(item T) bool {
+	if rc.limit > 0 && len(rc.items) >= rc.limit {
+		return false
+	}
 	if rc.isEmpty(item) {
 		return false
 	}
@@ -94,6 +109,17 @@ func (rc *PartialSetList[T]) Length() int {
 // Items 返回当前列表的元素
 func (rc *PartialSetList[T]) Items() []T {
 	return rc.items
+}
+
+// NonEmptyItems 返回当前列表的非空元素
+func (rc *PartialSetList[T]) NonEmptyItems() []T {
+	items := make([]T, 0)
+	for _, item := range rc.items {
+		if !rc.isEmpty(item) {
+			items = append(items, item)
+		}
+	}
+	return items
 }
 
 func (rc *PartialSetList[T]) removeEmptySlot(index int) {
