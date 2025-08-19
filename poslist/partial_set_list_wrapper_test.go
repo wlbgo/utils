@@ -63,7 +63,7 @@ func TestInsertAt(t *testing.T) {
 		t.Fatalf("Failed to create PartialSetList: %v", err)
 	}
 
-	// 测试在位置0插入
+	// 测试在位置0插入（允许扩展）
 	if !list.InsertAt(0, "first") {
 		t.Error("Failed to insert at position 0")
 	}
@@ -72,7 +72,7 @@ func TestInsertAt(t *testing.T) {
 		t.Errorf("Expected length 1, got %d", list.Length())
 	}
 
-	// 测试在位置5插入（超出当前长度）
+	// 测试在位置5插入（超出当前长度，允许扩展）
 	if !list.InsertAt(5, "fifth") {
 		t.Error("Failed to insert at position 5")
 	}
@@ -195,5 +195,42 @@ func TestEmptySlotsManagement(t *testing.T) {
 	// 验证空位置
 	if !list.IsEmpty(1) || !list.IsEmpty(3) || !list.IsEmpty(5) {
 		t.Error("Positions 1, 3, 5 should be empty")
+	}
+}
+
+func TestLimitInsertAtAndInsertFirstEmpty(t *testing.T) {
+	list, err := NewPartialSetListWithLimit[int](isEmptyInt, createEmptyInt, 6)
+	if err != nil {
+		t.Fatalf("Failed to create PartialSetList with limit: %v", err)
+	}
+
+	// 超过当前长度的位置的 InsertAt 应该失败且不扩容
+	if list.InsertAt(25, 251) {
+		t.Error("InsertAt with index beyond limit should fail")
+	}
+	if list.Length() != 0 {
+		t.Errorf("Expected length 0 after failed InsertAt, got %d", list.Length())
+	}
+
+	// InsertFirstEmpty 应该成功并在位置0插入 31
+	if !list.InsertFirstEmpty(31) {
+		t.Error("InsertFirstEmpty(31) should succeed")
+	}
+	if list.Length() != 1 {
+		t.Errorf("Expected length 1 after first insert, got %d", list.Length())
+	}
+	if items := list.Items(); items[0] != 31 {
+		t.Errorf("Expected items[0] == 31, got %v", items[0])
+	}
+
+	// 再次 InsertFirstEmpty 应该成功并在位置1插入 32
+	if !list.InsertFirstEmpty(32) {
+		t.Error("InsertFirstEmpty(32) should succeed")
+	}
+	if list.Length() != 2 {
+		t.Errorf("Expected length 2 after second insert, got %d", list.Length())
+	}
+	if items := list.Items(); items[1] != 32 {
+		t.Errorf("Expected items[1] == 32, got %v", items[1])
 	}
 }

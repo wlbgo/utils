@@ -40,17 +40,19 @@ func NewPartialSetListWithLimit[T any](isEmpty func(T) bool, createEmpty func() 
 
 // InsertAt 在指定位置插入元素，如果位置超出当前长度则扩展数组
 func (rc *PartialSetList[T]) InsertAt(index int, item T) bool {
-	if rc.limit > 0 && len(rc.items) >= rc.limit {
-		return false
-	}
 	if rc.isEmpty(item) {
 		return false
 	}
 	if index < 0 {
 		return false
 	}
+	// 如果设置了上限且插入位置超出上限，直接失败
+	if rc.limit > 0 && index >= rc.limit {
+		return false
+	}
 	// 如果位置超过当前长度，需要扩展数组
 	if index >= len(rc.items) {
+		// 已经确保 index 未超过 limit（若设置了 limit），因此扩展不会越界
 		newItems := make([]T, index+1)
 		copy(newItems, rc.items)
 		// 填充新增的空位置到 emptySlots
@@ -71,14 +73,14 @@ func (rc *PartialSetList[T]) InsertAt(index int, item T) bool {
 
 // InsertFirstEmpty 在第一个空位置插入元素，如果没有空位则扩展
 func (rc *PartialSetList[T]) InsertFirstEmpty(item T) bool {
-	if rc.limit > 0 && len(rc.items) >= rc.limit {
-		return false
-	}
 	if rc.isEmpty(item) {
 		return false
 	}
 	if len(rc.emptySlots) == 0 {
 		// 扩展一个新空位
+		if rc.limit > 0 && len(rc.items) >= rc.limit {
+			return false
+		}
 		rc.items = append(rc.items, rc.createEmpty())
 		rc.emptySlots = append(rc.emptySlots, len(rc.items)-1)
 	}
