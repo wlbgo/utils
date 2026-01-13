@@ -47,7 +47,7 @@ func (f *MyDefaultValueFetcher) DefaultValue(args ...any) (string, error) {
 
 ### 创建缓存配置
 
-创建一个 `CachableConfig` 实例，并设置缓存的 TTL（Time-To-Live）和是否强制更新。
+创建一个 `Config` 实例，并设置缓存的 TTL（Time-To-Live）和是否强制更新。
 
 ```go
 package main

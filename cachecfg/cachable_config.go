@@ -33,8 +33,8 @@ type singleCache[T any] struct {
 	ExpireTime time.Time
 }
 
-// CachableConfig represents a cacheable configuration
-type CachableConfig[T any] struct {
+// Config represents a cacheable configuration
+type Config[T any] struct {
 	ValueFetcher[T] // ValueFetcher interface
 	TTL             time.Duration
 	Cache           map[string]*singleCache[T]
@@ -46,9 +46,9 @@ type CachableConfig[T any] struct {
 	cleanInterval time.Duration
 }
 
-// NewCacheCfg creates a new CachableConfig
-func NewCacheCfg[T any](ttl time.Duration, forceUpdate bool) *CachableConfig[T] {
-	return &CachableConfig[T]{
+// NewCacheCfg creates a new Config
+func NewCacheCfg[T any](ttl time.Duration, forceUpdate bool) *Config[T] {
+	return &Config[T]{
 		TTL:         ttl,
 		Cache:       make(map[string]*singleCache[T]),
 		Mutex:       sync.RWMutex{},
@@ -56,8 +56,8 @@ func NewCacheCfg[T any](ttl time.Duration, forceUpdate bool) *CachableConfig[T] 
 	}
 }
 
-// NewCacheCfgWithAutoClean creates a new CachableConfig with automatic cache cleaning
-func NewCacheCfgWithAutoClean[T any](ttl time.Duration, forceUpdate bool, cleanInterval time.Duration) *CachableConfig[T] {
+// NewCacheCfgWithAutoClean creates a new Config with automatic cache cleaning
+func NewCacheCfgWithAutoClean[T any](ttl time.Duration, forceUpdate bool, cleanInterval time.Duration) *Config[T] {
 	c := NewCacheCfg[T](ttl, forceUpdate)
 	if cleanInterval <= 0 {
 		panic("cleanInterval must be greater than 0")
@@ -69,7 +69,7 @@ func NewCacheCfgWithAutoClean[T any](ttl time.Duration, forceUpdate bool, cleanI
 }
 
 // GetValue retrieves the value from the cache or fetches it if not present
-func (c *CachableConfig[T]) GetValue(args ...any) (T, error) {
+func (c *Config[T]) GetValue(args ...any) (T, error) {
 	c.Mutex.RLock()
 	key := c.ValueFetcher.Key(args...)
 	if v, ok := c.Cache[key]; ok && v.ExpireTime.After(time.Now()) {
@@ -112,7 +112,7 @@ func (c *CachableConfig[T]) GetValue(args ...any) (T, error) {
 }
 
 // startCleaner starts a goroutine that periodically cleans up expired cache entries
-func (c *CachableConfig[T]) startCleaner() {
+func (c *Config[T]) startCleaner() {
 	ticker := time.NewTicker(c.cleanInterval)
 	defer ticker.Stop()
 
@@ -127,7 +127,7 @@ func (c *CachableConfig[T]) startCleaner() {
 }
 
 // cleanExpiredCache removes expired cache entries
-func (c *CachableConfig[T]) cleanExpiredCache() {
+func (c *Config[T]) cleanExpiredCache() {
 	c.Mutex.Lock()
 	defer c.Mutex.Unlock()
 
@@ -140,7 +140,7 @@ func (c *CachableConfig[T]) cleanExpiredCache() {
 }
 
 // StopCleaner stops the cache cleaner goroutine
-func (c *CachableConfig[T]) StopCleaner() {
+func (c *Config[T]) StopCleaner() {
 	if c.stopChan != nil {
 		close(c.stopChan)
 	}
