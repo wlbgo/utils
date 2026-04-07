@@ -120,7 +120,7 @@ func (c *Config[T]) GetValue(args ...any) (T, error) {
 // a background goroutine to refresh it when the cache is stale. Only one goroutine
 // per key will be refreshing at a time. Falls back to synchronous GetValue when no
 // cached value exists at all (e.g. first call).
-func (c *CachableConfig[T]) AsyncGetValue(args ...any) (T, error) {
+func (c *Config[T]) AsyncGetValue(args ...any) (T, error) {
 	key := c.ValueFetcher.Key(args...)
 
 	c.Mutex.RLock()
@@ -141,7 +141,7 @@ func (c *CachableConfig[T]) AsyncGetValue(args ...any) (T, error) {
 
 // triggerAsyncUpdate starts a background goroutine to refresh the cache for the
 // given key. If a refresh is already in flight for that key, it is a no-op.
-func (c *CachableConfig[T]) triggerAsyncUpdate(key string, args ...any) {
+func (c *Config[T]) triggerAsyncUpdate(key string, args ...any) {
 	c.updatingMu.Lock()
 	if c.updating[key] {
 		c.updatingMu.Unlock()
