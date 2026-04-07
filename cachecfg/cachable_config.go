@@ -44,6 +44,10 @@ type Config[T any] struct {
 	// use for clean cache
 	stopChan      chan struct{}
 	cleanInterval time.Duration
+
+	// tracks keys that have an in-flight async refresh to prevent duplicate goroutines
+	updatingMu sync.Mutex
+	updating   map[string]bool
 }
 
 // NewCacheCfg creates a new Config
@@ -53,6 +57,7 @@ func NewCacheCfg[T any](ttl time.Duration, forceUpdate bool) *Config[T] {
 		Cache:       make(map[string]*singleCache[T]),
 		Mutex:       sync.RWMutex{},
 		ForceUpdate: forceUpdate,
+		updating:    make(map[string]bool),
 	}
 }
 
@@ -109,6 +114,50 @@ func (c *Config[T]) GetValue(args ...any) (T, error) {
 		ExpireTime: time.Now().Add(c.TTL),
 	}
 	return value, nil
+}
+
+// AsyncGetValue returns the cached value immediately (even if expired) and triggers
+// a background goroutine to refresh it when the cache is stale. Only one goroutine
+// per key will be refreshing at a time. Falls back to synchronous GetValue when no
+// cached value exists at all (e.g. first call).
+func (c *CachableConfig[T]) AsyncGetValue(args ...any) (T, error) {
+	key := c.ValueFetcher.Key(args...)
+
+	c.Mutex.RLock()
+	v, ok := c.Cache[key]
+	c.Mutex.RUnlock()
+
+	if ok {
+		if v.ExpireTime.Before(time.Now()) {
+			c.triggerAsyncUpdate(key, args...)
+			return v.Value, errUseOutdatedValue
+		}
+		return v.Value, nil
+	}
+
+	// No cached value yet — block synchronously so the caller gets a real value.
+	return c.GetValue(args...)
+}
+
+// triggerAsyncUpdate starts a background goroutine to refresh the cache for the
+// given key. If a refresh is already in flight for that key, it is a no-op.
+func (c *CachableConfig[T]) triggerAsyncUpdate(key string, args ...any) {
+	c.updatingMu.Lock()
+	if c.updating[key] {
+		c.updatingMu.Unlock()
+		return
+	}
+	c.updating[key] = true
+	c.updatingMu.Unlock()
+
+	go func() {
+		defer func() {
+			c.updatingMu.Lock()
+			delete(c.updating, key)
+			c.updatingMu.Unlock()
+		}()
+		c.GetValue(args...) //nolint:errcheck
+	}()
 }
 
 // startCleaner starts a goroutine that periodically cleans up expired cache entries
