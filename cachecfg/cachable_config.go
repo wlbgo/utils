@@ -141,6 +141,8 @@ func (c *Config[T]) AsyncGetValue(args ...any) (T, error) {
 
 // triggerAsyncUpdate starts a background goroutine to refresh the cache for the
 // given key. If a refresh is already in flight for that key, it is a no-op.
+// Unlike GetValue, a failed fetch will never delete the stale cache entry, so
+// subsequent AsyncGetValue calls can still return the old value immediately.
 func (c *Config[T]) triggerAsyncUpdate(key string, args ...any) {
 	c.updatingMu.Lock()
 	if c.updating[key] {
@@ -156,7 +158,23 @@ func (c *Config[T]) triggerAsyncUpdate(key string, args ...any) {
 			delete(c.updating, key)
 			c.updatingMu.Unlock()
 		}()
-		c.GetValue(args...) //nolint:errcheck
+
+		value, err := c.FetchValue(args...)
+		if err != nil && errors.Is(err, UseDefaultValue) {
+			if defaultValueFetcher, ok := c.ValueFetcher.(DefaultValueFetcher[T]); ok {
+				value, err = defaultValueFetcher.DefaultValue(args...)
+			}
+		}
+		if err != nil {
+			return
+		}
+
+		c.Mutex.Lock()
+		c.Cache[key] = &singleCache[T]{
+			Value:      value,
+			ExpireTime: time.Now().Add(c.TTL),
+		}
+		c.Mutex.Unlock()
 	}()
 }
 
