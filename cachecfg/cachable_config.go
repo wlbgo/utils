@@ -9,6 +9,9 @@ import (
 var errUseOutdatedValue = errors.New("use outdated value")
 var errDefaultUnimplemented = errors.New("default value unimplemented")
 
+// ErrCacheMiss is returned by GetNoWait when the key has never been cached.
+var ErrCacheMiss = errors.New("cache miss")
+
 // UseDefaultValue is a custom error to indicate that DefaultValue should be used
 var UseDefaultValue = errors.New("use default value")
 
@@ -137,6 +140,30 @@ func (c *Config[T]) AsyncGetValue(args ...any) (T, error) {
 
 	// No cached value yet — block synchronously so the caller gets a real value.
 	return c.GetValue(args...)
+}
+
+// GetValueNoWait returns immediately without ever blocking on a fetch.
+//   - Cache hit (not expired): returns (value, nil).
+//   - Cache hit (expired): returns (old value, errUseOutdatedValue), triggers async refresh.
+//   - Cache miss (never cached): returns (zero value, ErrCacheMiss), triggers async refresh.
+func (c *Config[T]) GetValueNoWait(args ...any) (T, error) {
+	key := c.ValueFetcher.Key(args...)
+
+	c.Mutex.RLock()
+	v, ok := c.Cache[key]
+	c.Mutex.RUnlock()
+
+	if ok {
+		if v.ExpireTime.Before(time.Now()) {
+			c.triggerAsyncUpdate(key, args...)
+			return v.Value, errUseOutdatedValue
+		}
+		return v.Value, nil
+	}
+
+	c.triggerAsyncUpdate(key, args...)
+	var zero T
+	return zero, ErrCacheMiss
 }
 
 // triggerAsyncUpdate starts a background goroutine to refresh the cache for the
